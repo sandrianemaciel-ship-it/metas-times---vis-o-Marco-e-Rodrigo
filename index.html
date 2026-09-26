@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Times &amp; Metas — Painel Comercial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-1: #0a0e1a; --bg-2: #0f1424; --bg-3: #161b2e;
+    --surface: #1a2138; --surface-2: #232c47;
+    --border: #2a334d; --border-strong: #3a4567;
+    --ink: #e8ecf5; --ink-2: #a8b2cf; --ink-3: #6c7898;
+    --gold: #d4a574; --gold-2: #e8c89f;
+    --emerald: #4ade80; --emerald-deep: #15803d;
+    --crimson: #f87171; --crimson-deep: #991b1b;
+    --azure: #60a5fa; --amber: #fbbf24; --violet: #a78bfa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg-1); color: var(--ink);
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 14px; line-height: 1.5; min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 0%, rgba(212, 165, 116, 0.06), transparent 60%),
+      radial-gradient(ellipse 60% 50% at 100% 0%, rgba(96, 165, 250, 0.05), transparent 60%),
+      var(--bg-1);
+  }
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10, 14, 26, 0.85); backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px; display: flex; align-items: center; gap: 16px;
+  }
+  .topbar .brand { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+  .topbar .brand .dot { color: var(--gold); }
+  .topbar .sub { font-size: 11.5px; color: var(--ink-3); }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 26px 28px 60px; }
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 22px;
+  }
+  .pill {
+    padding: 6px 12px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; font-size: 11.5px; color: var(--ink-2);
+    cursor: pointer; transition: all 0.15s; font-family: inherit;
+  }
+  .pill:hover { border-color: var(--border-strong); color: var(--ink); }
+  .pill.active { background: var(--gold); color: #1a1208; border-color: var(--gold); font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div style="flex:0 0 auto">
+      <div class="brand">Times <span class="dot">&amp;</span> Metas</div>
+      <div class="sub" id="subtitulo">Painel comercial · Previsto × Realizado</div>
+    </div>
+    <nav style="margin-left:auto;display:flex;gap:6px">
+      <button id="aba-times" class="pill active" onclick="trocarAba('times')" style="padding:8px 16px;font-size:12.5px">📊 Times</button>
+      <button id="aba-insights" class="pill" onclick="trocarAba('insights')" style="padding:8px 16px;font-size:12.5px">💡 Insights</button>
+    </nav>
+  </div>
+  <div class="wrap">
+    <div id="tab-times"><div id="timesContent"></div></div>
+    <div id="tab-insights" style="display:none"><div id="insightsContent"></div></div>
+  </div>
+
+<script>
+let METAS = {};   // preenchido depois da senha (times-cofre.js)
+const TIMES = {"BALBOA":{"lider":"SANDRO","cor":"#ef4444"},"FÊNIX":{"lider":"PATRÍCIA DOS SANTOS BORGES RIBEIRO","cor":"#f97316"},"RAGNAROK":{"lider":"LEONARDO DE VARGAS DALPUBEL","cor":"#a855f7"},"ENCARE":{"lider":"FABIO JUNIOR RODRIGUES","cor":"#22c55e"},"BUTTERFLY":{"lider":"JESSICA SOARES PORTO","cor":"#ec4899"},"ALPHA":{"lider":"SANDRIANE RODRIGUES MACIEL","cor":"#3b82f6"},"ÁUREA":{"lider":"LUÍSA","cor":"#06b6d4"}};
+
+let MES_SELECIONADO = '';
+
+const TIME_CORES = {
+  'BALBOA': '#ef4444', 'FÊNIX': '#f97316', 'RAGNAROK': '#a855f7', 'ENCARE': '#22c55e',
+  'BUTTERFLY': '#ec4899', 'ALPHA': '#3b82f6', 'ÁUREA': '#06b6d4', 'Sem Time': '#6c7898',
+};
+
+// Região de atuação de cada time
+const TIME_REGIOES = {
+  'BALBOA':    { label: 'Sudeste (parcial)',          ufs: ['SP','MG'] },
+  'FÊNIX':     { label: 'Sudeste (parcial)',          ufs: ['SP','MG'] },
+  'BUTTERFLY': { label: 'Sul + RJ/ES',                ufs: ['RS','SC','PR','RJ','ES'] },
+  'RAGNAROK':  { label: 'Nordeste (exceto MA)',       ufs: ['BA','SE','AL','PE','PB','RN','CE','PI'] },
+  'ENCARE':    { label: 'Norte + Centro-Oeste + MA',  ufs: ['AC','AP','AM','PA','RO','RR','TO','GO','MT','MS','DF','MA'] },
+  'ALPHA':     { label: 'Brasil todo', nacional: true },
+  'ÁUREA':     { label: 'Brasil todo', nacional: true },
+};
+
+function regioesHTML(nome, cor) {
+  const reg = TIME_REGIOES[nome];
+  if (!reg) return '';
+  const rotulo = `<span style="font-size:9px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;font-weight:700">Atende</span>`;
+  if (reg.nacional) {
+    return `
+      <div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap">
+        ${rotulo}
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:${cor};background:${cor}1a;border:1px solid ${cor}55;border-radius:20px;padding:3px 11px">🇧🇷 Brasil todo</span>
+      </div>`;
+  }
+  const chips = reg.ufs.map(uf =>
+    `<span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:600;color:var(--ink-2);background:var(--bg-2);border:1px solid var(--border);border-radius:5px;padding:2px 6px">${uf}</span>`
+  ).join('');
+  return `
+    <div style="margin-top:8px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+        ${rotulo}
+        <span style="font-size:10.5px;color:${cor};font-weight:600">${reg.label}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">${chips}</div>
+    </div>`;
+}
+
+const fmtBRL = v => {
+  if (v == null || v === 0) return '\u2014';
+  return new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
+};
+const fmtBRLfull = v => {
+  if (v == null) return '\u2014';
+  return new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(v);
+};
+const fmtNum = v => {
+  if (v == null) return '0';
+  return new Intl.NumberFormat('pt-BR').format(v);
+};
+const escHTML = s => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function renderTimes() {
+  const meta = METAS[MES_SELECIONADO] || {};
+  const mesesDisponiveis = Object.keys(METAS).sort();
+  const mesNomes = {
+    '2026-01':'Janeiro','2026-02':'Fevereiro','2026-03':'Março','2026-04':'Abril',
+    '2026-05':'Maio','2026-06':'Junho','2026-07':'Julho','2026-08':'Agosto',
+    '2026-09':'Setembro','2026-10':'Outubro','2026-11':'Novembro','2026-12':'Dezembro'
+  };
+
+  const invictus = meta['INVICTUS'];
+  const invictusHTML = invictus ? renderTimeCard('INVICTUS', invictus, true) : '';
+
+  const ordemTimes = ['BALBOA', 'FÊNIX', 'RAGNAROK', 'ENCARE', 'BUTTERFLY', 'ALPHA', 'ÁUREA'];
+  const timesHTML = ordemTimes
+    .filter(nome => meta[nome])
+    .map(nome => renderTimeCard(nome, meta[nome] || null, false))
+    .join('');
+
+  document.getElementById('timesContent').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600">Performance de Times</div>
+        <div style="font-size:12.5px;color:var(--ink-3);margin-top:2px">Previsto × Realizado · Indicadores operacionais</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;background:var(--surface);padding:6px;border-radius:10px;border:1px solid var(--border)">
+        <span style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;padding:0 8px">Mês</span>
+        ${mesesDisponiveis.map(m => `
+          <button onclick="trocarMes('${m}')" class="${m === MES_SELECIONADO ? 'pill active' : 'pill'}" style="padding:7px 14px;font-size:12.5px">${mesNomes[m] || MES_NOMES[m] || m}</button>
+        `).join('')}
+        ${mesesDisponiveis.length === 1 ? `<span style="font-size:11px;color:var(--ink-3);padding:0 10px">aguardando demais meses</span>` : ''}
+      </div>
+    </div>
+
+    ${invictusHTML}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(420px, 1fr));gap:18px;margin-top:18px">
+      ${timesHTML}
+    </div>
+  `;
+}
+
+const META_REATIVACAO_AUREA = 70;
+
+function renderAureaCard(nome, meta) {
+  const cor = TIME_CORES[nome] || '#06b6d4';
+  const lider = TIMES[nome]?.lider || '\u2014';
+  const reativados = meta.reativados || 0;
+  const pctReativacao = Math.min(100, (reativados / META_REATIVACAO_AUREA) * 100);
+  const corReativacao = pctReativacao >= 100 ? 'var(--emerald)' : (pctReativacao >= 60 ? 'var(--amber)' : 'var(--azure)');
+  const ticketMedio = _ticket(meta);
+
+  const ind = (label, valor, sub, color) => `
+    <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
+      <div style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;font-weight:600">${label}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;color:${color || 'var(--ink)'}">${valor}</div>
+      ${sub ? `<div style="font-size:10.5px;color:var(--ink-3);margin-top:2px">${sub}</div>` : ''}
+    </div>
+  `;
+
+  return `
+    <div class="panel" style="border-left:4px solid ${cor};background:linear-gradient(135deg, rgba(6,182,212,0.06), var(--surface));">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:10px">
+        <div>
+          <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:${cor};letter-spacing:-0.01em">${escHTML(nome)}</div>
+          <div style="font-size:12px;color:var(--ink-2);margin-top:2px">Líder: <strong style="color:var(--ink)">${escHTML(lider)}</strong></div>
+          ${regioesHTML(nome, cor)}
+        </div>
+        <div style="text-align:right">
+          <div style="display:inline-block;background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.35);color:${cor};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;padding:5px 10px;border-radius:20px">♻ Time de Reativação</div>
+        </div>
+      </div>
+
+      <!-- HERO: Carteira total em destaque -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div style="background:linear-gradient(135deg, rgba(6,182,212,0.18), rgba(6,182,212,0.04));border:1px solid rgba(6,182,212,0.4);border-radius:12px;padding:16px 18px">
+          <div style="font-size:10.5px;color:var(--ink-2);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:6px">📊 Carteira total</div>
+          <div style="font-family:'Fraunces',serif;font-size:38px;font-weight:700;color:${cor};line-height:1">${fmtNum(meta.totalClientes)}</div>
+          <div style="font-size:11px;color:var(--ink-3);margin-top:4px">clientes sob responsabilidade</div>
+        </div>
+        <div style="background:linear-gradient(135deg, rgba(167,139,250,0.14), rgba(167,139,250,0.03));border:1px solid rgba(167,139,250,0.35);border-radius:12px;padding:16px 18px">
+          <div style="font-size:10.5px;color:var(--ink-2);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:6px">♻ Reativados no mês</div>
+          <div style="font-family:'Fraunces',serif;font-size:38px;font-weight:700;color:var(--violet);line-height:1">${fmtNum(reativados)}</div>
+          <div style="font-size:11px;color:var(--ink-3);margin-top:4px">de 70 na meta do mês</div>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-2);border:1px solid rgba(6,182,212,0.25);border-radius:10px;padding:14px 16px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="font-size:11.5px;color:var(--ink-2);text-transform:uppercase;letter-spacing:0.08em;font-weight:600">Meta de reativação no mês</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:600;color:var(--ink)"><strong style="color:${corReativacao}">${fmtNum(reativados)}</strong> <span style="color:var(--ink-3);font-size:13px">/ ${META_REATIVACAO_AUREA}</span></span>
+        </div>
+        <div style="background:var(--bg-3);border-radius:6px;height:16px;overflow:hidden;position:relative;border:1px solid var(--border)">
+          <div style="height:100%;background:linear-gradient(90deg, ${corReativacao}, ${corReativacao}dd);width:${pctReativacao}%;transition:width 0.5s"></div>
+        </div>
+        <div style="font-size:10.5px;color:var(--ink-3);margin-top:6px">${pctReativacao.toFixed(0)}% da meta de <strong style="color:var(--ink-2)">70 clientes</strong> reativados</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:8px">
+        ${ind('Mix', fmtNum(meta.positivacaoMix), 'positivação', 'var(--gold-2)')}
+        ${ind('Valor de Pedido', meta.realizadoVendas > 0 ? fmtBRL(meta.realizadoVendas) : '\u2014', 'vendas no mês', 'var(--emerald)')}
+        ${ind('Faturamento', meta.realizadoFat > 0 ? fmtBRL(meta.realizadoFat) : '\u2014', 'faturado no mês', null)}
+        ${ind('Ticket Médio', ticketMedio > 0 ? fmtBRL(ticketMedio) : '\u2014', 'no mês', cor)}
+      </div>
+    </div>
+  `;
+}
+
+function renderTimeCard(nome, meta, isInvictus) {
+  const cor = TIME_CORES[nome] || 'var(--gold)';
+  const lider = TIMES[nome]?.lider || (isInvictus ? 'MARCO' : '\u2014');
+
+  if (nome === 'ÁUREA' && meta) {
+    return renderAureaCard(nome, meta);
+  }
+
+  if (!meta) {
+    return `
+      <div class="panel" style="border-left:4px solid ${cor};opacity:0.6">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+          <div>
+            <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:600">${escHTML(nome)}</div>
+            <div style="font-size:11.5px;color:var(--ink-3);margin-top:2px">Líder: ${escHTML(lider)}</div>
+          </div>
+        </div>
+        <div style="font-size:13px;color:var(--ink-3);padding:20px 0;text-align:center">Sem dados para este mês</div>
+      </div>
+    `;
+  }
+
+  const pctFat = meta.pctFat || 0;
+  const calculadoAuto = meta.calculadoAuto;
+  const corBarra = pctFat >= 100 ? 'var(--emerald)' : (pctFat >= 80 ? 'var(--amber)' : 'var(--crimson)');
+  const larguraBarra = Math.min(150, pctFat);
+  const ticketMedio = _ticket(meta);
+
+  // Ranking Top 3 dos times — só é preenchido no card INVICTUS (visão agregada)
+  const mesData = METAS[MES_SELECIONADO] || {};
+  const rankTimes = ['BALBOA', 'FÊNIX', 'RAGNAROK', 'ENCARE', 'BUTTERFLY', 'ALPHA', 'ÁUREA'];
+  const topN = (key, fmt, opts) => {
+    opts = opts || {};
+    return rankTimes
+      .filter(t => mesData[t] && mesData[t][key] != null && (!opts.skipZero || mesData[t][key] > 0))
+      .map(t => ({ nome: t, cor: TIME_CORES[t] || 'var(--gold)', valor: mesData[t][key] }))
+      .sort((a, b) => opts.asc ? a.valor - b.valor : b.valor - a.valor)
+      .slice(0, 3)
+      .map(r => ({ nome: r.nome, cor: r.cor, valorFmt: fmt(r.valor) }));
+  };
+  const R = isInvictus ? {
+    vendas:     topN('realizadoVendas', fmtBRL, {skipZero:true}),
+    fat:        topN('realizadoFat', fmtBRL, {skipZero:true}),
+    meta:       topN('previsto', fmtBRL, {skipZero:true}),
+    colab:      topN('totalColaboradores', fmtNum),
+    ativos:     topN('ativos', fmtNum),
+    novos:      topN('novos', fmtNum),
+    reativados: topN('reativados', fmtNum),
+    mix:        topN('positivacaoMix', fmtNum),
+    risco:      topN('inativariamMes', fmtNum),
+    inativou:   topN('inativou', fmtNum),
+    recup:      topN('pctRecuperacao', v => v + '%', {skipZero:true}),
+    churn:      topN('churn', v => v.toFixed(2) + '%', {skipZero:true}),
+  } : {};
+
+  // Ranking de ticket médio — informado por time (fallback vendas / ativos), só no card INVICTUS
+  if (isInvictus) {
+    R.ticket = rankTimes
+      .filter(t => mesData[t] && _ticket(mesData[t]) > 0)
+      .map(t => ({ nome: t, cor: TIME_CORES[t] || 'var(--gold)', valor: _ticket(mesData[t]) }))
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 3)
+      .map(r => ({ nome: r.nome, cor: r.cor, valorFmt: fmtBRL(r.valor) }));
+  }
+
+  const ind = (label, valor, sub, color, ranking, rankRisk) => `
+    <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+      <div style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;font-weight:600">${label}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;color:${color || 'var(--ink)'}">${valor}</div>
+      ${sub ? `<div style="font-size:10.5px;color:var(--ink-3);margin-top:2px">${sub}</div>` : ''}
+      ${ranking && ranking.length ? `
+        <div style="margin-top:9px;border-top:1px solid ${rankRisk ? 'rgba(248,113,113,0.25)' : 'var(--border)'};padding-top:8px;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:4px;font-size:8.5px;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:1px;color:${rankRisk ? 'var(--crimson)' : 'var(--emerald)'}">
+            <span style="font-size:9px">${rankRisk ? '\u25BC' : '\u25B2'}</span>
+            <span>${rankRisk ? 'Top 3 \u00B7 aten\u00E7\u00E3o' : 'Top 3 times'}</span>
+          </div>
+          ${ranking.map((r, i) => `
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:10.5px;line-height:1.3">
+              <span style="display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden">
+                <span style="color:var(--ink-3);font-family:'JetBrains Mono',monospace;font-size:9px">${i + 1}</span>
+                <span style="width:6px;height:6px;border-radius:2px;background:${r.cor};flex:0 0 auto"></span>
+                <span style="color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(r.nome)}</span>
+              </span>
+              <span style="color:${rankRisk ? 'var(--crimson)' : 'var(--ink)'};font-family:'JetBrains Mono',monospace;font-weight:600;flex:0 0 auto">${r.valorFmt}</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `;
+
+  return `
+    <div class="panel" style="border-left:4px solid ${cor};${isInvictus ? 'background:linear-gradient(135deg, rgba(212,165,116,0.06), var(--surface));' : ''}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:10px">
+        <div>
+          <div style="font-family:'Fraunces',serif;font-size:${isInvictus ? '24' : '20'}px;font-weight:700;color:${cor};letter-spacing:-0.01em">${escHTML(nome)}</div>
+          <div style="font-size:12px;color:var(--ink-2);margin-top:2px">Líder: <strong style="color:var(--ink)">${escHTML(lider)}</strong></div>
+          ${!isInvictus ? regioesHTML(nome, cor) : ''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Fraunces',serif;font-size:28px;font-weight:700;color:${corBarra};line-height:1">${pctFat > 0 ? pctFat.toFixed(1)+'%' : '\u2014'}</div>
+          <div style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px">${pctFat > 0 ? 'atingimento' : 'sem meta'}</div>
+        </div>
+      </div>
+
+      ${calculadoAuto ? `<div style="background:rgba(96,165,250,0.08);border:1px dashed rgba(96,165,250,0.3);border-radius:6px;padding:8px 10px;margin-bottom:12px;font-size:11px;color:var(--azure);line-height:1.4">ⓘ Indicadores calculados automaticamente do Excel — campos como Previsto, Realizado Vendas e Inativou aguardam preenchimento manual.</div>` : ''}
+
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-2);margin-bottom:6px">
+          <span>Realizado: <strong style="color:var(--ink)">${fmtBRLfull(meta.realizadoFat)}</strong></span>
+          <span>Meta: <strong style="color:var(--ink)">${meta.previsto > 0 ? fmtBRLfull(meta.previsto) : '\u2014 a definir'}</strong></span>
+        </div>
+        <div style="background:var(--bg-3);border-radius:6px;height:14px;overflow:hidden;position:relative;border:1px solid var(--border)">
+          <div style="height:100%;background:linear-gradient(90deg, ${corBarra}, ${corBarra}dd);width:${(larguraBarra/150)*100}%;transition:width 0.5s;position:relative">
+            ${pctFat > 100 ? `<div style="position:absolute;top:0;bottom:0;left:${(100/larguraBarra)*100}%;width:1px;background:rgba(255,255,255,0.5)"></div>` : ''}
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(${isInvictus ? 5 : 4}, 1fr);gap:8px;margin-bottom:12px">
+        ${ind('Vendas', meta.realizadoVendas > 0 ? fmtBRL(meta.realizadoVendas) : '\u2014', 'realizado vendas', null, R.vendas)}
+        ${ind('Faturamento', fmtBRL(meta.realizadoFat), 'realizado fat.', null, R.fat)}
+        ${ind('Meta', meta.previsto > 0 ? fmtBRL(meta.previsto) : '\u2014', 'previsto', 'var(--gold-2)', R.meta)}
+        ${ind('Ticket Médio', ticketMedio > 0 ? fmtBRL(ticketMedio) : '\u2014', 'no mês', 'var(--emerald)', R.ticket)}
+        ${isInvictus ? ind('Colaboradores', meta.totalColaboradores || '\u2014', 'total empresa', 'var(--violet)', R.colab) : ''}
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;margin-bottom:10px">
+        ${ind('Ativos', fmtNum(meta.ativos), '', 'var(--emerald)', R.ativos)}
+        ${ind('Novos', fmtNum(meta.novos), 'no mês', 'var(--azure)', R.novos)}
+        ${ind('Reativados', fmtNum(meta.reativados), 'no mês', 'var(--violet)', R.reativados)}
+        ${ind('Mix', fmtNum(meta.positivacaoMix), 'positivação', 'var(--gold-2)', R.mix)}
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;margin-bottom:12px">
+        ${ind('Risco Inativ.', fmtNum(meta.inativariamMes), 'inativariam', 'var(--amber)', R.risco, true)}
+        ${ind('Inativou', meta.inativou > 0 ? fmtNum(meta.inativou) : '\u2014', 'no mês', 'var(--crimson)', R.inativou, true)}
+        ${ind('% Recup.', meta.pctRecuperacao > 0 ? meta.pctRecuperacao + '%' : '\u2014', 'recuperação', meta.pctRecuperacao >= 50 ? 'var(--emerald)' : 'var(--amber)', R.recup)}
+        ${ind('Churn', meta.churn > 0 ? meta.churn.toFixed(2) + '%' : '\u2014', 'taxa', meta.churn < 5 ? 'var(--emerald)' : 'var(--crimson)', R.churn, true)}
+      </div>
+
+      <div style="border-top:1px solid var(--border);padding-top:10px;font-size:11.5px;color:var(--ink-2)">
+        📊 Carteira: <strong style="color:var(--ink)">${fmtNum(meta.totalClientes)}</strong> clientes
+        ${isInvictus ? ` · <strong style="color:var(--ink)">${fmtNum(meta.totalColaboradores)}</strong> colaboradores` : ''}
+      </div>
+    </div>
+  `;
+}
+
+window.trocarMes = function(mes) {
+  MES_SELECIONADO = mes;
+  if (ABA_ATIVA === 'insights') renderInsights(); else renderTimes();
+};
+
+let ABA_ATIVA = 'times';
+window.trocarAba = function(aba) {
+  ABA_ATIVA = aba;
+  document.getElementById('tab-times').style.display = aba === 'times' ? '' : 'none';
+  document.getElementById('tab-insights').style.display = aba === 'insights' ? '' : 'none';
+  document.getElementById('aba-times').className = aba === 'times' ? 'pill active' : 'pill';
+  document.getElementById('aba-insights').className = aba === 'insights' ? 'pill active' : 'pill';
+  if (aba === 'insights') renderInsights(); else renderTimes();
+};
+
+/* ============================ ABA INSIGHTS ============================ */
+const MES_NOMES = {
+  '2026-01':'Janeiro','2026-02':'Fevereiro','2026-03':'Março','2026-04':'Abril',
+  '2026-05':'Maio','2026-06':'Junho','2026-07':'Julho','2026-08':'Agosto',
+  '2026-09':'Setembro','2026-10':'Outubro','2026-11':'Novembro','2026-12':'Dezembro'
+};
+const ORDEM_INSIGHTS = ['BALBOA','FÊNIX','RAGNAROK','ENCARE','BUTTERFLY','ALPHA','ÁUREA'];
+
+const mesAnteriorDe = mes => {
+  const ms = Object.keys(METAS).sort();
+  const i = ms.indexOf(mes);
+  return i > 0 ? ms[i-1] : null;
+};
+const _ticket = d => !d ? 0 : (d.ticketMedio != null ? d.ticketMedio : ((d.ativos > 0 && d.realizadoVendas > 0) ? d.realizadoVendas / d.ativos : 0));
+const _saldo  = d => ((d.novos||0) + (d.reativados||0) - (d.inativou||0));
+const _pctD   = (c, p) => (p == null || p === 0) ? null : ((c - p) / p * 100);
+const _ppD    = (c, p) => (p == null) ? null : (c - p);
+
+function setaDelta(v, opts) {
+  opts = opts || {};
+  const sufixo = opts.sufixo != null ? opts.sufixo : '%';
+  const casas  = opts.casas  != null ? opts.casas  : 1;
+  const eps    = opts.epsilon != null ? opts.epsilon : 0.05;
+  if (v == null) return `<span style="color:var(--ink-3);font-size:10px">\u2014</span>`;
+  const neutro = Math.abs(v) < eps;
+  const bom = opts.inverso ? v < 0 : v > 0;
+  const cor = neutro ? 'var(--ink-3)' : (bom ? 'var(--emerald)' : 'var(--crimson)');
+  const seta = neutro ? '\u2192' : (v > 0 ? '\u25B2' : '\u25BC');
+  const val = (v > 0 ? '+' : '') + v.toFixed(casas) + sufixo;
+  return `<span style="color:${cor};font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:600;white-space:nowrap">${seta} ${val}</span>`;
+}
+
+function sparkline(vals, cor) {
+  const nums = vals.filter(x => x != null && x > 0);
+  if (!nums.length) return '<span style="color:var(--ink-3);font-size:10px">\u2014</span>';
+  const max = Math.max(...nums);
+  const bars = vals.map(x => {
+    const ok = x != null && x > 0;
+    const h = ok ? Math.max(14, (x / max) * 100) : 0;
+    return `<div style="flex:1;display:flex;align-items:flex-end;height:26px"><div title="${ok ? fmtBRL(x) : 'sem dados'}" style="width:100%;height:${h}%;background:${cor};opacity:${ok ? 1 : 0.2};border-radius:2px 2px 0 0;min-height:${ok ? '3px' : '0'}"></div></div>`;
+  }).join('');
+  return `<div style="display:flex;gap:2px;align-items:flex-end;width:56px">${bars}</div>`;
+}
+
+function renderInsights() {
+  const mes = MES_SELECIONADO;
+  const prev = mesAnteriorDe(mes);
+  const cur = METAS[mes] || {};
+  const ant = prev ? (METAS[prev] || {}) : {};
+  const mesesDisp = Object.keys(METAS).sort();
+  const meses = mesesDisp;
+  const inv = cur['INVICTUS'] || {};
+  const invA = prev ? (ant['INVICTUS'] || null) : null;
+
+  // ---------- KPIs INVICTUS (pulso da empresa) ----------
+  const kpis = [
+    { rot:'Vendas totais', cor:'var(--ink)', val:fmtBRL(inv.realizadoVendas),
+      delta:setaDelta(_pctD(inv.realizadoVendas, invA && invA.realizadoVendas), {}),
+      sub:`meta ${inv.previsto ? fmtBRL(inv.previsto) : '\u2014'}` },
+    { rot:'Atingimento da meta', cor: inv.pctFat>=100?'var(--emerald)':(inv.pctFat>=80?'var(--amber)':'var(--crimson)'),
+      val:(inv.pctFat!=null?inv.pctFat.toFixed(1)+'%':'\u2014'),
+      delta:setaDelta(_ppD(inv.pctFat, invA && invA.pctFat), {sufixo:' p.p.'}) },
+    { rot:'Ticket médio', cor:'var(--gold-2)', val:fmtBRL(_ticket(inv)),
+      delta:setaDelta(_pctD(_ticket(inv), invA ? _ticket(invA) : null), {}), sub:'no mês' },
+    { rot:'Churn', cor: inv.churn<5?'var(--emerald)':(inv.churn<8?'var(--amber)':'var(--crimson)'),
+      val:(inv.churn!=null?inv.churn.toFixed(2)+'%':'\u2014'),
+      delta:setaDelta(_ppD(inv.churn, invA && invA.churn), {sufixo:' p.p.', inverso:true, casas:2}) },
+    { rot:'Base ativa', cor:'var(--emerald)', val:fmtNum(inv.ativos),
+      delta:setaDelta(_ppD(inv.ativos, invA && invA.ativos), {sufixo:'', casas:0, epsilon:0.5}),
+      sub:`${fmtNum(inv.totalClientes)} na carteira` },
+    { rot:'Saldo de clientes', cor:_saldo(inv)>=0?'var(--emerald)':'var(--crimson)',
+      val:(_saldo(inv)>=0?'+':'')+fmtNum(_saldo(inv)),
+      delta:'', sub:`${inv.novos||0} novos · ${inv.reativados||0} reativ · ${inv.inativou||0} inativou` },
+  ];
+  const kpiCard = k => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+      <div style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.09em;font-weight:700;margin-bottom:8px">${k.rot}</div>
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <span style="font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:${k.cor};line-height:1">${k.val}</span>
+        ${k.delta || ''}
+      </div>
+      ${k.sub ? `<div style="font-size:10.5px;color:var(--ink-3);margin-top:6px">${k.sub}</div>` : ''}
+    </div>`;
+
+  // ---------- Geração automática de alertas e destaques ----------
+  const alertas = [], destaques = [];
+  ORDEM_INSIGHTS.forEach(t => {
+    const d = cur[t]; if (!d) return;
+    const p = ant[t] || null;
+    const cor = TIME_CORES[t] || 'var(--gold)';
+    const push = (arr, sev, titulo, detalhe) => arr.push({ time:t, cor, sev, titulo, detalhe });
+    const mesAntTxt = prev ? ` vs ${MES_NOMES[prev]}` : '';
+
+    // Meta
+    if (d.pctFat > 0) {
+      const dpp = _ppD(d.pctFat, p ? p.pctFat : null);
+      const trend = dpp != null ? ` (${dpp>=0?'+':''}${dpp.toFixed(1)} p.p.${mesAntTxt})` : '';
+      if (d.pctFat < 80) push(alertas, d.pctFat < 70 ? 3 : 2, `${t} abaixo da meta`, `Atingimento de ${d.pctFat.toFixed(1)}%${trend}. Realizado ${fmtBRL(d.realizadoFat)} de ${fmtBRL(d.previsto)}.`);
+      else if (d.pctFat >= 100) push(destaques, 1, `${t} bateu a meta`, `Atingimento de ${d.pctFat.toFixed(1)}%${trend}.`);
+    }
+    // Time de reativação (sem meta de faturamento)
+    if ((d.previsto||0) === 0 && typeof META_REATIVACAO_AUREA !== 'undefined') {
+      const pctR = (d.reativados / META_REATIVACAO_AUREA) * 100;
+      if (pctR < 60) push(alertas, pctR < 30 ? 2 : 1, `${t}: reativação abaixo da meta`, `${d.reativados} de ${META_REATIVACAO_AUREA} clientes reativados (${pctR.toFixed(0)}% da meta do mês).`);
+      else push(destaques, 1, `${t}: meta de reativação`, `${d.reativados} de ${META_REATIVACAO_AUREA} reativados (${pctR.toFixed(0)}%).`);
+    }
+    // Vendas MoM
+    if (p) {
+      const dv = _pctD(d.realizadoVendas, p.realizadoVendas);
+      if (dv != null && dv <= -15) push(alertas, dv <= -25 ? 3 : 2, `${t}: queda nas vendas`, `Vendas caíram ${Math.abs(dv).toFixed(1)}%${mesAntTxt} (${fmtBRL(d.realizadoVendas)}).`);
+      else if (dv != null && dv >= 15) push(destaques, 1, `${t}: vendas em alta`, `Vendas cresceram ${dv.toFixed(1)}%${mesAntTxt} (${fmtBRL(d.realizadoVendas)}).`);
+    }
+    // Churn
+    const dchurn = _ppD(d.churn, p ? p.churn : null);
+    if (d.churn >= 10) push(alertas, d.churn >= 13 ? 3 : 2, `${t}: churn elevado`, `Churn de ${d.churn.toFixed(2)}%${dchurn!=null?` (${dchurn>=0?'+':''}${dchurn.toFixed(2)} p.p.${mesAntTxt})`:''}.`);
+    else if (dchurn != null && dchurn >= 3) push(alertas, 2, `${t}: churn subindo`, `Churn subiu ${dchurn.toFixed(2)} p.p.${mesAntTxt}, chegando a ${d.churn.toFixed(2)}%.`);
+    else if (dchurn != null && dchurn <= -3) push(destaques, 1, `${t}: churn em queda`, `Churn recuou ${Math.abs(dchurn).toFixed(2)} p.p.${mesAntTxt}, para ${d.churn.toFixed(2)}%.`);
+    // Saldo de clientes
+    const s = _saldo(d);
+    if (s < 0) push(alertas, 2, `${t}: carteira encolhendo`, `Saldo negativo de ${s} clientes (${d.novos} novos + ${d.reativados} reativados \u2212 ${d.inativou} inativados).`);
+    else if (s >= 40) push(destaques, 1, `${t}: carteira crescendo`, `Saldo líquido de +${s} clientes no mês.`);
+    // Recuperação
+    if (d.inativariamMes > 0 && d.pctRecuperacao > 0 && d.pctRecuperacao < 30) push(alertas, 1, `${t}: recuperação baixa`, `Só ${d.pctRecuperacao}% dos ${d.inativariamMes} clientes em risco foram recuperados.`);
+    else if (d.pctRecuperacao >= 50) push(destaques, 1, `${t}: boa recuperação`, `${d.pctRecuperacao}% dos clientes em risco recuperados.`);
+  });
+  alertas.sort((a,b) => b.sev - a.sev);
+  destaques.sort((a,b) => b.sev - a.sev);
+
+  const cardInsight = (o, tipo) => {
+    const isAlerta = tipo === 'alerta';
+    const accent = isAlerta ? (o.sev >= 3 ? 'var(--crimson)' : 'var(--amber)') : 'var(--emerald)';
+    const icone = isAlerta ? (o.sev >= 3 ? '\u26D4' : '\u26A0\uFE0F') : '\u2705';
+    return `
+      <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${accent};border-radius:10px;padding:12px 14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+          <span style="font-size:13px">${icone}</span>
+          <span style="width:8px;height:8px;border-radius:2px;background:${o.cor};flex:0 0 auto"></span>
+          <span style="font-size:12.5px;font-weight:700;color:var(--ink)">${escHTML(o.titulo)}</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--ink-2);line-height:1.45;padding-left:29px">${escHTML(o.detalhe)}</div>
+      </div>`;
+  };
+
+  // ---------- Tabela comparativa mês a mês ----------
+  const th = (txt, alin) => `<th style="padding:9px 12px;text-align:${alin||'right'};font-size:9.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.07em;font-weight:700;white-space:nowrap">${txt}</th>`;
+  const celVD = (valHTML, deltaHTML) => `
+    <td style="padding:9px 12px;text-align:right;border-bottom:1px solid var(--border)">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:600;color:var(--ink)">${valHTML}</div>
+      <div style="margin-top:2px">${deltaHTML}</div>
+    </td>`;
+
+  const linhaTime = (t, d, p, destaque) => {
+    const cor = TIME_CORES[t] || 'var(--gold)';
+    const serie = meses.map(m => (METAS[m][t] ? METAS[m][t].realizadoVendas : null));
+    const tk = _ticket(d), tkA = p ? _ticket(p) : null;
+    const s = _saldo(d);
+    const atgCor = d.pctFat>=100?'var(--emerald)':(d.pctFat>=80?'var(--amber)':(d.pctFat>0?'var(--crimson)':'var(--ink-3)'));
+    const churnCor = d.churn<5?'var(--emerald)':(d.churn<8?'var(--amber)':'var(--crimson)');
+    const reg = TIME_REGIOES[t] ? (TIME_REGIOES[t].nacional ? 'Brasil todo' : TIME_REGIOES[t].label) : '';
+    return `
+      <tr style="${destaque ? 'background:linear-gradient(90deg, rgba(212,165,116,0.07), transparent)' : ''}">
+        <td style="padding:9px 12px;border-bottom:1px solid ${destaque?'var(--border-strong)':'var(--border)'}">
+          <div style="display:flex;align-items:center;gap:9px">
+            <span style="width:10px;height:10px;border-radius:3px;background:${cor};flex:0 0 auto"></span>
+            <div>
+              <div style="font-weight:700;color:var(--ink);font-size:13px">${escHTML(t)}</div>
+              ${reg ? `<div style="font-size:9px;color:var(--ink-3)">${reg}</div>` : ''}
+            </div>
+          </div>
+        </td>
+        <td style="padding:9px 12px;border-bottom:1px solid ${destaque?'var(--border-strong)':'var(--border)'}">${sparkline(serie, cor)}</td>
+        ${celVD(d.pctFat>0?`<span style="color:${atgCor}">${d.pctFat.toFixed(1)}%</span>`:'\u2014', setaDelta(_ppD(d.pctFat, p?p.pctFat:null), {sufixo:' pp'}))}
+        ${celVD(fmtBRL(d.realizadoVendas), setaDelta(_pctD(d.realizadoVendas, p?p.realizadoVendas:null), {}))}
+        ${celVD(tk>0?fmtBRL(tk):'\u2014', setaDelta(_pctD(tk, tkA), {}))}
+        ${celVD(fmtNum(d.ativos), setaDelta(_ppD(d.ativos, p?p.ativos:null), {sufixo:'', casas:0, epsilon:0.5}))}
+        ${celVD(`<span style="color:${s>=0?'var(--emerald)':'var(--crimson)'}">${s>=0?'+':''}${s}</span>`, `<span style="font-size:9px;color:var(--ink-3)">${d.novos}n·${d.reativados}r·${d.inativou}i</span>`)}
+        ${celVD(d.churn>0?`<span style="color:${churnCor}">${d.churn.toFixed(2)}%</span>`:'\u2014', setaDelta(_ppD(d.churn, p?p.churn:null), {sufixo:' pp', inverso:true, casas:2}))}
+        ${celVD(d.pctRecuperacao>0?`${d.pctRecuperacao}%`:'\u2014', setaDelta(_ppD(d.pctRecuperacao, p?p.pctRecuperacao:null), {sufixo:' pp', casas:0}))}
+      </tr>`;
+  };
+
+  const linhasTimes = ORDEM_INSIGHTS.filter(t => cur[t]).map(t => linhaTime(t, cur[t], ant[t] || null, false)).join('');
+  const linhaInv = inv && inv.realizadoVendas != null ? linhaTime('INVICTUS', inv, invA, true) : '';
+
+  // ---------- Montagem ----------
+  const subComparacao = prev
+    ? `Mês de <strong style="color:var(--ink)">${MES_NOMES[mes]}</strong> · variações comparadas a ${MES_NOMES[prev]}`
+    : `Mês de <strong style="color:var(--ink)">${MES_NOMES[mes]}</strong> · sem mês anterior para comparação`;
+
+  document.getElementById('insightsContent').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600">Insights do Supervisor</div>
+        <div style="font-size:12.5px;color:var(--ink-3);margin-top:2px">${subComparacao}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;background:var(--surface);padding:6px;border-radius:10px;border:1px solid var(--border)">
+        <span style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;padding:0 8px">Mês</span>
+        ${mesesDisp.map(m => `<button onclick="trocarMes('${m}')" class="${m === MES_SELECIONADO ? 'pill active' : 'pill'}" style="padding:7px 14px;font-size:12.5px">${MES_NOMES[m] || m}</button>`).join('')}
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:10px">Pulso da empresa · INVICTUS</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));gap:12px;margin-bottom:24px">
+      ${kpis.map(kpiCard).join('')}
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:18px;margin-bottom:24px">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="font-size:11px;color:var(--crimson);text-transform:uppercase;letter-spacing:0.1em;font-weight:700">\u26A0\uFE0F Precisa de atenção</span>
+          <span style="font-size:11px;color:var(--ink-3)">${alertas.length}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          ${alertas.length ? alertas.map(o => cardInsight(o, 'alerta')).join('') : `<div style="background:var(--surface);border:1px dashed var(--border);border-radius:10px;padding:16px;text-align:center;font-size:12px;color:var(--ink-3)">Nenhum ponto crítico neste mês \u2705</div>`}
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="font-size:11px;color:var(--emerald);text-transform:uppercase;letter-spacing:0.1em;font-weight:700">\u2705 Destaques positivos</span>
+          <span style="font-size:11px;color:var(--ink-3)">${destaques.length}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          ${destaques.length ? destaques.map(o => cardInsight(o, 'destaque')).join('') : `<div style="background:var(--surface);border:1px dashed var(--border);border-radius:10px;padding:16px;text-align:center;font-size:12px;color:var(--ink-3)">Nenhum destaque registrado neste mês</div>`}
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:10px">Comparativo mês a mês · todos os times</div>
+    <div class="panel" style="padding:6px 0;overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:840px">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border-strong)">
+            ${th('Time','left')}${th('Tendência','left')}${th('Atingimento')}${th('Vendas')}${th('Ticket médio')}${th('Ativos')}${th('Saldo clientes')}${th('Churn')}${th('% Recup.')}
+          </tr>
+        </thead>
+        <tbody>
+          ${linhasTimes}
+          ${linhaInv}
+        </tbody>
+      </table>
+    </div>
+    <div style="font-size:10.5px;color:var(--ink-3);margin-top:10px;line-height:1.5">
+      As setas comparam com ${prev ? MES_NOMES[prev] : 'o mês anterior'}. <span style="color:var(--emerald)">\u25B2 verde</span> = evolução positiva · <span style="color:var(--crimson)">\u25BC vermelho</span> = piora (no churn a lógica é invertida: cair é bom). Saldo de clientes = novos + reativados \u2212 inativados. Ticket médio informado por time (ou vendas ÷ ativos quando não informado). Tendência mostra as vendas dos meses disponíveis.
+    </div>
+  `;
+}
+
+document.getElementById('timesContent').innerHTML = '<div id="carregando" style="padding:60px 0;text-align:center;color:var(--ink-2)">Carregando…</div>';
+</script>
+<script src="times-cofre.js"></script>
+</body>
+</html>
