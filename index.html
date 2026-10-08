@@ -72,13 +72,13 @@
 
 <script>
 let METAS = {};   // preenchido depois da senha (times-cofre.js)
-const TIMES = {"BALBOA":{"lider":"SANDRO","cor":"#ef4444"},"FÊNIX":{"lider":"PATRÍCIA DOS SANTOS BORGES RIBEIRO","cor":"#f97316"},"RAGNAROK":{"lider":"LEONARDO DE VARGAS DALPUBEL","cor":"#a855f7"},"ENCARE":{"lider":"FABIO JUNIOR RODRIGUES","cor":"#22c55e"},"BUTTERFLY":{"lider":"JESSICA SOARES PORTO","cor":"#ec4899"},"ALPHA":{"lider":"SANDRIANE RODRIGUES MACIEL","cor":"#3b82f6"},"ÁUREA":{"lider":"LUÍSA","cor":"#06b6d4"}};
+const TIMES = {"BALBOA":{"lider":"SANDRO","cor":"#ef4444"},"FÊNIX":{"lider":"PATRÍCIA DOS SANTOS BORGES RIBEIRO","cor":"#f97316"},"RAGNAROK":{"lider":"LEONARDO DE VARGAS DALPUBEL","cor":"#a855f7"},"ENCARE":{"lider":"FABIO JUNIOR RODRIGUES","cor":"#22c55e"},"BUTTERFLY":{"lider":"JESSICA SOARES PORTO","cor":"#ec4899"},"ALPHA":{"lider":"SANDRIANE RODRIGUES MACIEL","cor":"#3b82f6"},"ÁUREA":{"lider":"LUÍSA","cor":"#06b6d4"},"LOBÃO":{"lider":"LOBÃO","cor":"#eab308"}};
 
 let MES_SELECIONADO = '';
 
 const TIME_CORES = {
   'BALBOA': '#ef4444', 'FÊNIX': '#f97316', 'RAGNAROK': '#a855f7', 'ENCARE': '#22c55e',
-  'BUTTERFLY': '#ec4899', 'ALPHA': '#3b82f6', 'ÁUREA': '#06b6d4', 'Sem Time': '#6c7898',
+  'BUTTERFLY': '#ec4899', 'ALPHA': '#3b82f6', 'ÁUREA': '#06b6d4', 'LOBÃO': '#eab308', 'Sem Time': '#6c7898',
 };
 
 // Região de atuação de cada time
@@ -142,7 +142,7 @@ function renderTimes() {
   const invictus = meta['INVICTUS'];
   const invictusHTML = invictus ? renderTimeCard('INVICTUS', invictus, true) : '';
 
-  const ordemTimes = ['BALBOA', 'FÊNIX', 'RAGNAROK', 'ENCARE', 'BUTTERFLY', 'ALPHA', 'ÁUREA'];
+  const ordemTimes = ['BALBOA', 'FÊNIX', 'RAGNAROK', 'ENCARE', 'BUTTERFLY', 'ALPHA', 'ÁUREA', 'LOBÃO'];
   const timesHTML = ordemTimes
     .filter(nome => meta[nome])
     .map(nome => renderTimeCard(nome, meta[nome] || null, false))
@@ -266,7 +266,7 @@ function renderTimeCard(nome, meta, isInvictus) {
 
   // Ranking Top 3 dos times — só é preenchido no card INVICTUS (visão agregada)
   const mesData = METAS[MES_SELECIONADO] || {};
-  const rankTimes = ['BALBOA', 'FÊNIX', 'RAGNAROK', 'ENCARE', 'BUTTERFLY', 'ALPHA', 'ÁUREA'];
+  const rankTimes = ['BALBOA', 'FÊNIX', 'RAGNAROK', 'ENCARE', 'BUTTERFLY', 'ALPHA', 'ÁUREA', 'LOBÃO'];
   const topN = (key, fmt, opts) => {
     opts = opts || {};
     return rankTimes
@@ -406,7 +406,7 @@ const MES_NOMES = {
   '2026-05':'Maio','2026-06':'Junho','2026-07':'Julho','2026-08':'Agosto',
   '2026-09':'Setembro','2026-10':'Outubro','2026-11':'Novembro','2026-12':'Dezembro'
 };
-const ORDEM_INSIGHTS = ['BALBOA','FÊNIX','RAGNAROK','ENCARE','BUTTERFLY','ALPHA','ÁUREA'];
+const ORDEM_INSIGHTS = ['BALBOA','FÊNIX','RAGNAROK','ENCARE','BUTTERFLY','ALPHA','ÁUREA','LOBÃO'];
 
 const mesAnteriorDe = mes => {
   const ms = Object.keys(METAS).sort();
